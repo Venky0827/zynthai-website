@@ -1,0 +1,1651 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ZynthAI — Stone Age to AI Age</title>
+  <meta name="description" content="A cinematic scroll through the history of compute, ending at the ZynthAI control plane for production AI infrastructure.">
+  <style>
+    :root {
+      --bg: #000;
+      --graphite: #0e0e11;
+      --panel: rgba(14, 14, 17, 0.58);
+      --panel-soft: rgba(21, 22, 26, 0.38);
+      --ash: #2a2c33;
+      --fg: #e8eaed;
+      --muted: rgba(232, 234, 237, 0.62);
+      --dim: rgba(232, 234, 237, 0.36);
+      --line: rgba(232, 234, 237, 0.14);
+      --line-hot: rgba(34, 211, 238, 0.42);
+      --cyan: #22d3ee;
+      --cyan-2: #06b6d4;
+      --ember: #c56c2d;
+      --font-display: "Space Grotesk", "Geist", "SF Pro Display", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+      --font-body: "Geist", "Space Grotesk", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+      --font-mono: "IBM Plex Mono", "JetBrains Mono", ui-monospace, Menlo, monospace;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html {
+      background: #000;
+      color: var(--fg);
+      font-family: var(--font-body);
+      scroll-behavior: auto;
+      -webkit-font-smoothing: antialiased;
+      text-rendering: optimizeLegibility;
+    }
+
+    body {
+      min-height: 100vh;
+      overflow-x: hidden;
+      background: #000;
+    }
+
+    button, a { font: inherit; }
+
+    /* ============================================================
+       IMAGE STAGE — 7 era layers x 2 planes (sky + mid)
+       Each era is a fixed positioned stack that cross-dissolves
+       as scroll progress moves through it.
+       ============================================================ */
+    .image-stage {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      overflow: hidden;
+      background: #000;
+    }
+
+    .era {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      will-change: opacity, transform;
+      transition: opacity 60ms linear;
+    }
+
+    .era .plane {
+      position: absolute;
+      inset: -8% -4%;
+      background-size: cover;
+      background-position: center;
+      filter: brightness(0.92) contrast(1.12) saturate(1.08);
+      will-change: transform;
+    }
+
+    .era .sky {
+      z-index: 1;
+      transform: scale(1.02) translate3d(0, 0, 0);
+    }
+
+    .era .mid {
+      z-index: 2;
+      transform: scale(1.06) translate3d(0, 0, 0);
+      mix-blend-mode: screen;
+    }
+
+    .era .wash {
+      position: absolute;
+      inset: 0;
+      z-index: 3;
+      pointer-events: none;
+      background:
+        linear-gradient(180deg, rgba(0,0,0,0.3) 0%, rgba(0,0,0,0.08) 40%, rgba(0,0,0,0.82) 100%),
+        radial-gradient(ellipse at 50% 42%, transparent 0 28%, rgba(0,0,0,0.42) 70%, rgba(0,0,0,0.88) 100%);
+    }
+
+    .era::before,
+    .era::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      z-index: 4;
+      pointer-events: none;
+      opacity: var(--era-atmosphere, 0.45);
+      transition: opacity 180ms linear;
+    }
+
+    .era::before {
+      mix-blend-mode: screen;
+      background: var(--era-light);
+    }
+
+    .era::after {
+      mix-blend-mode: multiply;
+      background: var(--era-shadow);
+    }
+
+    /* Era-specific atmospheric tints layered on top of images */
+    .era .tint {
+      position: absolute;
+      inset: 0;
+      z-index: 4;
+      pointer-events: none;
+      mix-blend-mode: multiply;
+      opacity: 0.55;
+    }
+
+    .era[data-era="0"] {
+      --era-light: radial-gradient(ellipse at 36% 58%, rgba(245, 154, 76, 0.28), transparent 38%), linear-gradient(105deg, rgba(110, 72, 42, 0.24), transparent 58%);
+      --era-shadow: linear-gradient(90deg, rgba(28, 12, 2, 0.66), rgba(0,0,0,0.1) 44%, rgba(0,0,0,0.68));
+    }
+    .era[data-era="1"] {
+      --era-light: radial-gradient(ellipse at 58% 60%, rgba(255, 128, 40, 0.36), transparent 34%), linear-gradient(100deg, rgba(126, 65, 18, 0.2), transparent 62%);
+      --era-shadow: linear-gradient(90deg, rgba(36, 10, 2, 0.62), rgba(0,0,0,0.16) 46%, rgba(0,0,0,0.72));
+    }
+    .era[data-era="2"] {
+      --era-light: radial-gradient(ellipse at 48% 45%, rgba(255, 184, 83, 0.24), transparent 42%), linear-gradient(115deg, rgba(104, 92, 74, 0.18), transparent 60%);
+      --era-shadow: linear-gradient(90deg, rgba(8, 7, 7, 0.72), rgba(32, 20, 12, 0.24) 48%, rgba(0,0,0,0.78));
+    }
+    .era[data-era="3"] {
+      --era-light: radial-gradient(ellipse at 52% 42%, rgba(34, 211, 238, 0.28), transparent 42%), linear-gradient(120deg, rgba(16, 119, 156, 0.22), transparent 58%);
+      --era-shadow: linear-gradient(90deg, rgba(0, 8, 14, 0.72), rgba(0,0,0,0.18) 50%, rgba(0,0,0,0.72));
+    }
+    .era[data-era="4"] {
+      --era-light: radial-gradient(ellipse at 50% 38%, rgba(125, 211, 252, 0.24), transparent 46%), linear-gradient(135deg, rgba(34, 211, 238, 0.14), transparent 60%);
+      --era-shadow: linear-gradient(90deg, rgba(0, 7, 12, 0.76), rgba(0,0,0,0.14) 48%, rgba(0,0,0,0.76));
+    }
+    .era[data-era="5"] {
+      --era-light: radial-gradient(ellipse at 50% 44%, rgba(180, 245, 255, 0.34), transparent 42%), linear-gradient(120deg, rgba(34, 211, 238, 0.22), transparent 60%);
+      --era-shadow: linear-gradient(90deg, rgba(0, 10, 14, 0.74), rgba(0,0,0,0.08) 50%, rgba(0,0,0,0.74));
+    }
+    .era[data-era="6"] {
+      --era-light: radial-gradient(ellipse at 50% 44%, rgba(34, 211, 238, 0.28), transparent 36%), radial-gradient(ellipse at 64% 32%, rgba(167, 139, 250, 0.22), transparent 34%);
+      --era-shadow: linear-gradient(90deg, rgba(3, 2, 10, 0.76), rgba(0,0,0,0.12) 50%, rgba(0,0,0,0.78));
+    }
+
+    .era[data-era="0"] .tint { background: radial-gradient(ellipse at 50% 60%, rgba(46, 24, 12, 0.0) 0%, rgba(8, 4, 2, 0.62) 80%); }
+    .era[data-era="1"] .tint { background: radial-gradient(ellipse at 50% 55%, rgba(64, 22, 8, 0.0) 0%, rgba(10, 4, 2, 0.62) 80%); }
+    .era[data-era="2"] .tint { background: radial-gradient(ellipse at 50% 50%, rgba(36, 18, 8, 0.0) 0%, rgba(6, 4, 4, 0.68) 80%); }
+    .era[data-era="3"] .tint { background: radial-gradient(ellipse at 50% 50%, rgba(8, 22, 36, 0.0) 0%, rgba(2, 6, 12, 0.7) 80%); }
+    .era[data-era="4"] .tint { background: radial-gradient(ellipse at 50% 50%, rgba(6, 18, 30, 0.0) 0%, rgba(1, 4, 8, 0.7) 80%); }
+    .era[data-era="5"] .tint { background: radial-gradient(ellipse at 50% 50%, rgba(8, 28, 36, 0.0) 0%, rgba(1, 5, 8, 0.66) 80%); }
+    .era[data-era="6"] .tint { background: radial-gradient(ellipse at 50% 50%, rgba(20, 10, 36, 0.0) 0%, rgba(2, 1, 5, 0.7) 80%); }
+
+    .era[data-era="0"] .plane,
+    .era[data-era="1"] .plane { filter: brightness(0.9) contrast(1.18) saturate(1.16) sepia(0.16); }
+    .era[data-era="2"] .plane { filter: brightness(0.86) contrast(1.22) saturate(0.94); }
+    .era[data-era="3"] .plane,
+    .era[data-era="4"] .plane { filter: brightness(0.88) contrast(1.18) saturate(1.1) hue-rotate(8deg); }
+    .era[data-era="5"] .plane,
+    .era[data-era="6"] .plane { filter: brightness(0.94) contrast(1.2) saturate(1.16); }
+
+    /* Per-era background colors used when images fail to load */
+    .era[data-era="0"] { background: radial-gradient(ellipse at 50% 70%, #3a1f10 0%, #0a0604 60%, #000 100%); }
+    .era[data-era="1"] { background: radial-gradient(ellipse at 50% 65%, #4a1e0a 0%, #110604 60%, #000 100%); }
+    .era[data-era="2"] { background: radial-gradient(ellipse at 50% 60%, #1a1410 0%, #0a0808 60%, #000 100%); }
+    .era[data-era="3"] { background: radial-gradient(ellipse at 50% 50%, #04202e 0%, #02080c 60%, #000 100%); }
+    .era[data-era="4"] { background: radial-gradient(ellipse at 50% 50%, #062836 0%, #02080a 60%, #000 100%); }
+    .era[data-era="5"] { background: radial-gradient(ellipse at 50% 50%, #0a3640 0%, #020a0e 60%, #000 100%); }
+    .era[data-era="6"] { background: radial-gradient(ellipse at 50% 50%, #1a0a3a 0%, #04020a 60%, #000 100%); }
+
+    /* ============================================================
+       FOREGROUND PARTICLES — atmospheric per era
+       ============================================================ */
+    #particles {
+      position: fixed;
+      inset: 0;
+      z-index: 5;
+      pointer-events: none;
+      mix-blend-mode: screen;
+    }
+
+    .film-vignette {
+      position: fixed;
+      inset: 0;
+      z-index: 6;
+      pointer-events: none;
+      background:
+        radial-gradient(ellipse at 50% 44%, transparent 0 38%, rgba(0,0,0,0.26) 64%, rgba(0,0,0,0.86) 100%),
+        linear-gradient(90deg, rgba(0,0,0,0.72), transparent 18%, transparent 82%, rgba(0,0,0,0.72));
+    }
+
+    .film-grain {
+      position: fixed;
+      inset: 0;
+      z-index: 7;
+      pointer-events: none;
+      opacity: 0.09;
+      mix-blend-mode: overlay;
+      background-image:
+        radial-gradient(circle at 22% 18%, rgba(255,255,255,0.28) 0 1px, transparent 1px),
+        radial-gradient(circle at 74% 66%, rgba(255,255,255,0.18) 0 1px, transparent 1px);
+      background-size: 73px 67px, 91px 83px;
+      animation: grain 8s steps(8) infinite;
+    }
+
+    @keyframes grain {
+      0%, 100% { transform: translate3d(-2%, -1%, 0); }
+      50% { transform: translate3d(2%, 1%, 0); }
+    }
+
+    /* ============================================================
+       CUSTOM CURSOR
+       ============================================================ */
+    .cursor {
+      position: fixed;
+      z-index: 60;
+      width: 28px;
+      height: 28px;
+      border: 1px solid rgba(34,211,238,0.78);
+      border-radius: 50%;
+      pointer-events: none;
+      transform: translate3d(-50%, -50%, 0);
+      transition: width 140ms ease, height 140ms ease, border-color 140ms ease, background 140ms ease;
+      mix-blend-mode: screen;
+    }
+
+    .cursor::after {
+      content: attr(data-label);
+      position: absolute;
+      top: 50%;
+      left: calc(100% + 9px);
+      transform: translateY(-50%);
+      color: var(--cyan);
+      font-family: var(--font-mono);
+      font-size: 10px;
+      letter-spacing: 0.12em;
+      white-space: nowrap;
+      opacity: 0;
+      transition: opacity 140ms ease;
+    }
+
+    .cursor.hot {
+      width: 48px;
+      height: 48px;
+      background: rgba(34,211,238,0.08);
+      border-color: rgba(34,211,238,1);
+    }
+
+    .cursor.hot::after { opacity: 1; }
+
+    /* ============================================================
+       NAV + OVERLAYS
+       ============================================================ */
+    .nav {
+      position: fixed;
+      z-index: 40;
+      inset: 0 0 auto;
+      height: 88px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 clamp(20px, 5vw, 76px);
+      pointer-events: none;
+    }
+
+    .wordmark, .menu-button { pointer-events: auto; }
+
+    .wordmark {
+      display: inline-flex;
+      align-items: baseline;
+      gap: 1px;
+      color: #fff;
+      text-decoration: none;
+      font-family: var(--font-display);
+      font-size: clamp(19px, 2vw, 26px);
+      font-weight: 800;
+      letter-spacing: -0.055em;
+    }
+
+    .wordmark .ai {
+      color: #72d9f5;
+      font-family: "Iowan Old Style", Georgia, serif;
+      font-style: italic;
+      font-weight: 400;
+      text-shadow: 0 0 28px rgba(114,217,245,0.34);
+    }
+
+    .menu-button {
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: rgba(255,255,255,0.045);
+      color: rgba(255,255,255,0.82);
+      min-height: 40px;
+      padding: 0 18px;
+      cursor: pointer;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      letter-spacing: 0.14em;
+      transition: background 180ms ease, border-color 180ms ease, color 180ms ease;
+    }
+
+    .menu-button:hover,
+    .menu-button:focus-visible {
+      color: #fff;
+      border-color: rgba(34,211,238,0.54);
+      background: rgba(34,211,238,0.12);
+      outline: none;
+    }
+
+    .menu-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 55;
+      padding: clamp(28px, 6vw, 86px);
+      background: rgba(0,0,0,0.86);
+      backdrop-filter: blur(26px);
+      display: grid;
+      align-items: center;
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 240ms ease, visibility 240ms ease;
+    }
+
+    .menu-overlay.open { opacity: 1; visibility: visible; }
+
+    .menu-overlay nav {
+      display: grid;
+      gap: clamp(16px, 3vw, 32px);
+      max-width: 720px;
+    }
+
+    .menu-overlay a {
+      color: #fff;
+      text-decoration: none;
+      font-family: var(--font-display);
+      font-size: clamp(40px, 7vw, 96px);
+      font-weight: 800;
+      letter-spacing: -0.06em;
+      line-height: 0.9;
+    }
+
+    .menu-overlay a:hover,
+    .menu-overlay a:focus-visible { color: var(--cyan); outline: none; }
+
+    .close-menu { position: absolute; top: clamp(18px, 4vw, 48px); right: clamp(18px, 5vw, 76px); }
+
+    .side-label {
+      position: fixed;
+      z-index: 30;
+      right: clamp(16px, 2.4vw, 34px);
+      top: 50%;
+      writing-mode: vertical-rl;
+      transform: translateY(-50%);
+      color: rgba(255,255,255,0.24);
+      font-family: var(--font-mono);
+      font-size: 9px;
+      letter-spacing: 0.28em;
+      font-weight: 400;
+    }
+
+    .progress-rail {
+      position: fixed;
+      z-index: 35;
+      left: clamp(16px, 3vw, 42px);
+      top: 50%;
+      transform: translateY(-50%);
+      display: grid;
+      gap: 10px;
+      opacity: 0.34;
+      transition: opacity 180ms ease;
+    }
+
+    .progress-rail:hover { opacity: 0.82; }
+
+    .tick {
+      display: grid;
+      grid-template-columns: 9px auto;
+      align-items: center;
+      gap: 7px;
+      color: rgba(255,255,255,0.2);
+      font-family: var(--font-mono);
+      font-size: 8px;
+      letter-spacing: 0.14em;
+      text-decoration: none;
+      transition: color 180ms ease;
+    }
+
+    .tick::before {
+      content: "";
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      border: 1px solid rgba(255,255,255,0.2);
+      background: rgba(255,255,255,0.05);
+      transition: transform 180ms ease, background 180ms ease, border-color 180ms ease, box-shadow 180ms ease;
+    }
+
+    .tick span {
+      max-width: 0;
+      overflow: hidden;
+      opacity: 0;
+      transition: max-width 180ms ease, opacity 180ms ease;
+    }
+    .progress-rail:hover .tick span {
+      max-width: 74px;
+      opacity: 0.48;
+    }
+    .tick.active { color: rgba(255,255,255,0.48); }
+    .progress-rail:hover .tick.active span { opacity: 0.72; }
+    .tick.active::before {
+      background: var(--cyan);
+      border-color: var(--cyan);
+      transform: scale(1.18);
+      box-shadow: 0 0 10px rgba(34,211,238,0.28);
+    }
+
+    /* ============================================================
+       CONTENT
+       ============================================================ */
+    main { position: relative; z-index: 10; }
+
+    .chapter {
+      min-height: 118vh;
+      display: grid;
+      align-items: center;
+      padding: 16vh clamp(24px, 8vw, 140px);
+    }
+
+    .chapter:nth-child(even) .copy { margin-left: auto; }
+    .chapter:last-of-type { min-height: 104vh; }
+
+    .copy {
+      width: min(660px, 100%);
+      opacity: 0;
+      transform: translate3d(0, 40px, 0);
+      transition: opacity 700ms cubic-bezier(.16,1,.3,1), transform 700ms cubic-bezier(.16,1,.3,1);
+      position: relative;
+    }
+
+    .copy::before {
+      content: "";
+      position: absolute;
+      z-index: -1;
+      inset: -38px -46px -34px;
+      background:
+        radial-gradient(ellipse at 18% 30%, rgba(0,0,0,0.62), rgba(0,0,0,0.36) 38%, transparent 72%),
+        linear-gradient(90deg, rgba(0,0,0,0.54), rgba(0,0,0,0.2) 56%, transparent);
+      filter: blur(8px);
+      pointer-events: none;
+    }
+
+    .chapter:nth-child(even) .copy::before {
+      background:
+        radial-gradient(ellipse at 82% 30%, rgba(0,0,0,0.62), rgba(0,0,0,0.36) 38%, transparent 72%),
+        linear-gradient(270deg, rgba(0,0,0,0.54), rgba(0,0,0,0.2) 56%, transparent);
+    }
+
+    .copy.hero-copy { width: min(760px, 100%); }
+
+    .copy.visible { opacity: 1; transform: translate3d(0, 0, 0); }
+
+    /* Staggered child reveals for buttery entrance */
+    .copy.visible .kicker { animation: fadeSlideUp 700ms cubic-bezier(.16,1,.3,1) both; }
+    .copy.visible h1,
+    .copy.visible h2 { animation: fadeSlideUp 700ms cubic-bezier(.16,1,.3,1) 60ms both; }
+    .copy.visible .lede { animation: fadeSlideUp 700ms cubic-bezier(.16,1,.3,1) 120ms both; }
+    .copy.visible .body-copy { animation: fadeSlideUp 700ms cubic-bezier(.16,1,.3,1) 180ms both; }
+    .copy.visible .cap-grid,
+    .copy.visible .workflow,
+    .copy.visible .trust-grid,
+    .copy.visible .diagram,
+    .copy.visible .cta-row { animation: fadeSlideUp 700ms cubic-bezier(.16,1,.3,1) 240ms both; }
+
+    @keyframes fadeSlideUp {
+      from { opacity: 0; transform: translate3d(0, 24px, 0); }
+      to { opacity: 1; transform: translate3d(0, 0, 0); }
+    }
+
+    .kicker {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 20px;
+      color: var(--cyan);
+      font-family: var(--font-mono);
+      font-size: 11px;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+    }
+
+    .kicker::before {
+      content: "";
+      width: 42px;
+      height: 1px;
+      background: linear-gradient(90deg, var(--cyan), transparent);
+    }
+
+    h1, h2 {
+      color: #fff;
+      font-family: var(--font-display);
+      font-weight: 820;
+      letter-spacing: -0.07em;
+      line-height: 0.92;
+      text-wrap: balance;
+      text-shadow: 0 18px 70px rgba(0,0,0,0.46);
+    }
+
+    h1 { font-size: clamp(46px, 6.7vw, 104px); max-width: 780px; }
+    h2 { font-size: clamp(42px, 7vw, 112px); }
+
+    .lede {
+      margin-top: 26px;
+      max-width: 650px;
+      color: rgba(232,234,237,0.78);
+      font-size: clamp(18px, 2.2vw, 27px);
+      line-height: 1.35;
+      text-wrap: pretty;
+    }
+
+    .body-copy {
+      margin-top: 18px;
+      max-width: 560px;
+      color: var(--muted);
+      font-size: clamp(15px, 1.25vw, 18px);
+      line-height: 1.7;
+    }
+
+    .hero-proof {
+      max-width: 570px;
+      margin-top: 16px;
+      color: rgba(232,234,237,0.7);
+      font-size: clamp(15px, 1.15vw, 17px);
+      line-height: 1.55;
+    }
+
+    .cue-strip {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 26px;
+      max-width: 760px;
+    }
+
+    .cue {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      min-height: 34px;
+      padding: 0 11px;
+      border: 1px solid rgba(34,211,238,0.22);
+      background: rgba(0,0,0,0.26);
+      color: rgba(232,234,237,0.78);
+      backdrop-filter: blur(16px);
+      font-family: var(--font-mono);
+      font-size: 10px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .cue::before {
+      content: "";
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: var(--cyan);
+      box-shadow: 0 0 14px rgba(34,211,238,0.72);
+    }
+
+    .cta-row {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-top: 34px;
+    }
+
+    .button {
+      min-height: 48px;
+      border-radius: 999px;
+      padding: 0 22px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      text-decoration: none;
+      border: 1px solid rgba(255,255,255,0.16);
+      background: rgba(255,255,255,0.05);
+      color: #fff;
+      font-size: 14px;
+      font-weight: 760;
+      cursor: pointer;
+      transition: transform 170ms ease, background 170ms ease, border-color 170ms ease, box-shadow 170ms ease;
+    }
+
+    .button.primary {
+      color: #001014;
+      background: linear-gradient(135deg, #b6f5ff, var(--cyan-2));
+      border-color: rgba(255,255,255,0.44);
+      box-shadow: 0 0 36px rgba(34,211,238,0.24);
+    }
+
+    .button:hover,
+    .button:focus-visible {
+      transform: translateY(-2px);
+      border-color: rgba(34,211,238,0.58);
+      box-shadow: 0 0 28px rgba(34,211,238,0.18);
+      outline: none;
+    }
+
+    .scroll-orbit {
+      position: absolute;
+      left: 50%;
+      bottom: 40px;
+      z-index: 18;
+      width: 112px;
+      height: 112px;
+      border: 1px solid rgba(255,255,255,0.18);
+      border-radius: 50%;
+      transform: translateX(-50%);
+      color: rgba(255,255,255,0.72);
+      display: grid;
+      place-items: center;
+      font-family: var(--font-mono);
+      font-size: 9px;
+      letter-spacing: 0.16em;
+      text-align: center;
+      animation: orbitPulse 2.2s ease-in-out infinite;
+    }
+
+    .scroll-orbit::before {
+      content: "";
+      position: absolute;
+      inset: 13px;
+      border-radius: inherit;
+      border: 1px solid rgba(34,211,238,0.32);
+      border-left-color: transparent;
+      animation: spin 7s linear infinite;
+    }
+
+    @keyframes orbitPulse { 50% { box-shadow: 0 0 36px rgba(34,211,238,0.18); } }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .cap-grid,
+    .trust-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 30px;
+      max-width: 740px;
+    }
+
+    .capability,
+    .stat {
+      min-height: 92px;
+      padding: 16px;
+      border: 1px solid rgba(255,255,255,0.12);
+      background: rgba(4,8,10,0.44);
+      backdrop-filter: blur(18px);
+    }
+
+    .capability b, .stat b {
+      display: block;
+      color: #fff;
+      font-size: 14px;
+      margin-bottom: 9px;
+    }
+
+    .capability span, .stat span {
+      display: block;
+      color: var(--muted);
+      font-family: var(--font-mono);
+      font-size: 10px;
+      line-height: 1.55;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .workflow {
+      margin-top: 34px;
+      display: grid;
+      gap: 0;
+      max-width: 780px;
+      border: 1px solid rgba(255,255,255,0.13);
+      background: rgba(0,0,0,0.32);
+      backdrop-filter: blur(18px);
+    }
+
+    .step {
+      display: grid;
+      grid-template-columns: 84px 1fr auto;
+      gap: 20px;
+      align-items: center;
+      min-height: 74px;
+      padding: 14px 18px;
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+    }
+
+    .step:last-child { border-bottom: 0; }
+    .step code { color: var(--cyan); font-family: var(--font-mono); font-size: 12px; }
+    .step strong { font-size: 17px; }
+    .step span { color: var(--muted); font-size: 13px; }
+
+    .diagram {
+      margin-top: 32px;
+      max-width: 760px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .node {
+      min-height: 108px;
+      padding: 18px;
+      border: 1px solid rgba(34,211,238,0.24);
+      background:
+        linear-gradient(135deg, rgba(34,211,238,0.12), transparent),
+        rgba(0,0,0,0.34);
+      backdrop-filter: blur(20px);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .node::after {
+      content: "";
+      position: absolute;
+      inset: auto 14px 14px;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(34,211,238,0.72), transparent);
+      transform: translateX(-60%);
+      animation: bootLine 2.8s ease-in-out infinite;
+    }
+
+    @keyframes bootLine {
+      0%, 100% { transform: translateX(-70%); opacity: 0.24; }
+      50% { transform: translateX(70%); opacity: 0.9; }
+    }
+
+    .node b { color: #fff; display: block; margin-bottom: 10px; }
+    .node span { color: var(--muted); font-size: 13px; line-height: 1.55; }
+
+    .stat strong {
+      display: block;
+      color: #fff;
+      font-family: var(--font-display);
+      font-size: clamp(28px, 4vw, 54px);
+      letter-spacing: -0.055em;
+      line-height: 1;
+      margin-bottom: 8px;
+    }
+
+    /* Final CTA section */
+    .reveal {
+      min-height: 120vh;
+      display: grid;
+      align-items: center;
+      padding: 16vh clamp(24px, 8vw, 140px) 14vh;
+      position: relative;
+    }
+
+    .reveal::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      background:
+        linear-gradient(90deg, rgba(0,0,0,0.86) 0%, rgba(0,0,0,0.56) 42%, rgba(0,0,0,0.2) 76%, rgba(0,0,0,0.66) 100%),
+        radial-gradient(circle at 78% 45%, rgba(34,211,238,0.22), transparent 36%);
+      z-index: -1;
+    }
+
+    .reveal-stage {
+      display: grid;
+      grid-template-columns: minmax(0, 850px);
+      gap: 0;
+      align-items: center;
+      max-width: 900px;
+    }
+
+    .reveal-mono {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--cyan);
+    }
+
+    .reveal-stack {
+      display: grid;
+      gap: 0;
+      max-width: min(760px, 100%);
+      margin-top: 34px;
+      border-top: 1px solid rgba(255,255,255,0.12);
+      border-bottom: 1px solid rgba(255,255,255,0.12);
+      background: linear-gradient(90deg, rgba(0,0,0,0.36), rgba(0,0,0,0.08));
+      backdrop-filter: blur(14px);
+    }
+
+    .reveal-stack li {
+      list-style: none;
+      min-height: 54px;
+      padding: 13px 8px;
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+      background: linear-gradient(90deg, rgba(0,0,0,0.22), rgba(34,211,238,0.035), transparent);
+      font-size: clamp(13px, 1.1vw, 15px);
+      line-height: 1.35;
+      color: rgba(232,234,237,0.84);
+      display: flex;
+      gap: 18px;
+      align-items: center;
+    }
+
+    .reveal-stack li:last-child { border-bottom: 0; }
+
+    .reveal-stack li::before {
+      content: attr(data-n);
+      font-family: var(--font-mono);
+      color: var(--cyan);
+      font-size: 11px;
+      letter-spacing: 0.12em;
+      min-width: 60px;
+      opacity: 0.78;
+    }
+
+    footer {
+      position: relative;
+      z-index: 10;
+      padding: 44px clamp(24px, 8vw, 140px) 70px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 24px;
+      color: rgba(255,255,255,0.52);
+      font-family: var(--font-mono);
+      font-size: 11px;
+      letter-spacing: 0.1em;
+      border-top: 1px solid rgba(255,255,255,0.1);
+      background: rgba(0,0,0,0.42);
+      backdrop-filter: blur(20px);
+    }
+
+    footer nav { display: flex; gap: 18px; flex-wrap: wrap; }
+    footer a { color: rgba(255,255,255,0.62); text-decoration: none; }
+    footer a:hover, footer a:focus-visible { color: var(--cyan); outline: none; }
+
+    /* Loading veil */
+    .veil {
+      position: fixed;
+      inset: 0;
+      z-index: 80;
+      background: #000;
+      display: grid;
+      place-items: center;
+      transition: opacity 600ms ease, visibility 600ms ease;
+    }
+
+    .veil.hidden { opacity: 0; visibility: hidden; }
+
+    .veil-inner {
+      display: grid;
+      gap: 14px;
+      text-align: center;
+      color: rgba(255,255,255,0.72);
+      font-family: var(--font-mono);
+      font-size: 11px;
+      letter-spacing: 0.18em;
+    }
+
+    .veil-bar {
+      width: 200px;
+      height: 1px;
+      background: rgba(255,255,255,0.14);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .veil-bar::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      width: 30%;
+      background: linear-gradient(90deg, transparent, var(--cyan), transparent);
+      animation: veilSlide 1.4s linear infinite;
+    }
+
+    @keyframes veilSlide { to { transform: translateX(220%); } }
+
+    @media (max-width: 920px) {
+      .cursor, .side-label { display: none; }
+      .nav { height: 74px; padding-inline: 18px; }
+      .progress-rail {
+        left: 18px;
+        top: auto;
+        right: 18px;
+        bottom: 18px;
+        transform: none;
+        display: flex;
+        justify-content: center;
+        pointer-events: none;
+      }
+      .tick { grid-template-columns: 9px; }
+      .tick span { display: none; }
+      .chapter { min-height: 112vh; padding: 18vh 22px; }
+      .chapter:nth-child(even) .copy { margin-left: 0; }
+      h1 { font-size: clamp(48px, 16vw, 78px); }
+      h2 { font-size: clamp(38px, 13vw, 64px); }
+      .lede { font-size: 18px; }
+      .cue-strip { gap: 6px; }
+      .cue { min-height: 30px; font-size: 9px; }
+      .cap-grid, .trust-grid, .diagram { grid-template-columns: 1fr; }
+      .reveal-stage { grid-template-columns: 1fr; }
+      .step { grid-template-columns: 1fr; gap: 6px; }
+      .scroll-orbit { display: none; }
+      footer { align-items: flex-start; flex-direction: column; padding-bottom: 48px; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+      *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+      }
+      .cursor { display: none; }
+      #particles { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="image-stage" aria-hidden="true">
+    <!-- Era 0 — STONE AGE (dawn, rock, ember) -->
+    <div class="era" data-era="0">
+      <div class="plane sky" data-sky="0"></div>
+      <div class="plane mid" data-mid="0"></div>
+      <div class="tint"></div>
+      <div class="wash"></div>
+    </div>
+
+    <!-- Era 1 — BRONZE / TOOLS (forge, hammer, spark) -->
+    <div class="era" data-era="1">
+      <div class="plane sky" data-sky="1"></div>
+      <div class="plane mid" data-mid="1"></div>
+      <div class="tint"></div>
+      <div class="wash"></div>
+    </div>
+
+    <!-- Era 2 — INDUSTRIAL (machinery, factory, gears) -->
+    <div class="era" data-era="2">
+      <div class="plane sky" data-sky="2"></div>
+      <div class="plane mid" data-mid="2"></div>
+      <div class="tint"></div>
+      <div class="wash"></div>
+    </div>
+
+    <!-- Era 3 — ELECTRIC / COMPUTE (circuit, GPU, neon) -->
+    <div class="era" data-era="3">
+      <div class="plane sky" data-sky="3"></div>
+      <div class="plane mid" data-mid="3"></div>
+      <div class="tint"></div>
+      <div class="wash"></div>
+    </div>
+
+    <!-- Era 4 — CLOUD-NATIVE (containers, server room, API) -->
+    <div class="era" data-era="4">
+      <div class="plane sky" data-sky="4"></div>
+      <div class="plane mid" data-mid="4"></div>
+      <div class="tint"></div>
+      <div class="wash"></div>
+    </div>
+
+    <!-- Era 5 — MODERN AI (control plane, GPU clusters, telemetry) -->
+    <div class="era" data-era="5">
+      <div class="plane sky" data-sky="5"></div>
+      <div class="plane mid" data-mid="5"></div>
+      <div class="tint"></div>
+      <div class="wash"></div>
+    </div>
+
+    <!-- Era 6 — FUTURE HORIZON (nebula, future city) -->
+    <div class="era" data-era="6">
+      <div class="plane sky" data-sky="6"></div>
+      <div class="plane mid" data-mid="6"></div>
+      <div class="tint"></div>
+      <div class="wash"></div>
+    </div>
+  </div>
+
+  <canvas id="particles" aria-hidden="true"></canvas>
+  <div class="film-vignette" aria-hidden="true"></div>
+  <div class="film-grain" aria-hidden="true"></div>
+
+  <div class="cursor" id="cursor" aria-hidden="true"></div>
+
+  <header class="nav" aria-label="Primary navigation">
+    <a class="wordmark" href="#origin" data-cursor="HOME">Zynth<span class="ai">AI</span></a>
+    <button class="menu-button" type="button" id="menuButton" aria-expanded="false" aria-controls="menuOverlay" data-cursor="MENU">MENU ●</button>
+  </header>
+
+  <div class="menu-overlay" id="menuOverlay" aria-hidden="true">
+    <button class="menu-button close-menu" type="button" id="closeMenu" data-cursor="CLOSE">CLOSE</button>
+    <nav aria-label="Overlay navigation">
+      <a href="#origin" data-cursor="PRODUCT">Product</a>
+      <a href="#electric" data-cursor="ARCH">Architecture</a>
+      <a href="#operate" data-cursor="FACTORY">AI Factory</a>
+      <a href="#future" data-cursor="FUTURE">Future</a>
+      <a href="#reveal" data-cursor="DEMO">Request Demo</a>
+    </nav>
+  </div>
+
+  <nav class="progress-rail" aria-label="Scroll chapters">
+    <a class="tick active" href="#origin" data-cursor="ORIGIN"><span>ORIGIN</span></a>
+    <a class="tick" href="#import" data-cursor="IMPORT"><span>IMPORT</span></a>
+    <a class="tick" href="#engines" data-cursor="ENGINES"><span>ENGINES</span></a>
+    <a class="tick" href="#electric" data-cursor="GPU"><span>COMPUTE</span></a>
+    <a class="tick" href="#cloud" data-cursor="CLOUD"><span>CLOUD</span></a>
+    <a class="tick" href="#operate" data-cursor="FACTORY"><span>FACTORY</span></a>
+    <a class="tick" href="#future" data-cursor="FUTURE"><span>FUTURE</span></a>
+  </nav>
+
+  <div class="side-label">KUBERNETES-NATIVE</div>
+
+  <div class="veil" id="veil" aria-hidden="true">
+    <div class="veil-inner">
+      <div>PREPARING SCENE</div>
+      <div class="veil-bar"></div>
+      <div id="veilStatus">CALIBRATING DEPTH…</div>
+    </div>
+  </div>
+
+  <main>
+    <section class="chapter" id="origin" data-chapter="0">
+      <div class="copy hero-copy">
+        <div class="kicker">[ 00 / ORIGIN — STONE AGE ]</div>
+        <h1 data-scramble>Raw compute to intelligent endpoints.</h1>
+        <p class="lede">A scroll journey from manual operations to the AI control plane.</p>
+        <p class="hero-proof">ZynthAI gives platform teams one path to import models, choose serving engines, size GPUs, expose APISIX-backed endpoints, and deploy through KServe.</p>
+        <div class="cue-strip" aria-label="Platform capabilities">
+          <span class="cue">Model registry</span>
+          <span class="cue">Engine catalog</span>
+          <span class="cue">GPU guidance</span>
+          <span class="cue">APISIX gateway</span>
+          <span class="cue">KServe deploy</span>
+        </div>
+        <div class="cta-row">
+          <a class="button primary magnetic" href="#reveal" data-cursor="PRODUCT">Explore Platform</a>
+          <a class="button magnetic" href="#import" data-cursor="SCROLL">Watch the Journey</a>
+        </div>
+      </div>
+      <div class="scroll-orbit">SCROLL<br>TO<br>DISCOVER</div>
+    </section>
+
+    <section class="chapter" id="import" data-chapter="1">
+      <div class="copy">
+        <div class="kicker">[ 01 / BRONZE — TOOLS ]</div>
+        <h2 data-scramble>First, you shape the raw material.</h2>
+        <p class="body-copy">Hand tools, fire, repetition. A new material meets a deliberate hand. ZynthAI begins the same way — by importing a raw model artifact and giving it shape, structure, and meaning.</p>
+        <div class="cap-grid">
+          <div class="capability"><b>Model Registry</b><span>Architecture, format, dtype, context.</span></div>
+          <div class="capability"><b>Source Aware</b><span>Hugging Face, NGC, NFS, S3.</span></div>
+          <div class="capability"><b>Metadata Confidence</b><span>Exact, derived, or estimated.</span></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="chapter" id="engines" data-chapter="2">
+      <div class="copy">
+        <div class="kicker">[ 02 / INDUSTRIAL — ENGINES ]</div>
+        <h2 data-scramble>Engines replace manual effort.</h2>
+        <p class="body-copy">Gears, pipes, and repeatability. ZynthAI matches model format, weight type, and runtime constraints against a catalog of serving engines — vLLM, TGI, llama.cpp, NVIDIA NIM — so platform teams stop guessing.</p>
+        <div class="workflow">
+          <div class="step"><code>01</code><strong>Import model</strong><span>Capture source, format, architecture, and metadata confidence.</span></div>
+          <div class="step"><code>02</code><strong>Probe compatibility</strong><span>Match model format to engines and runtime constraints.</span></div>
+          <div class="step"><code>03</code><strong>Choose hardware</strong><span>Estimate VRAM across weights, KV cache, and overhead.</span></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="chapter" id="electric" data-chapter="3">
+      <div class="copy">
+        <div class="kicker">[ 03 / ELECTRIC — COMPUTE ]</div>
+        <h2 data-scramble>The right silicon, before deployment.</h2>
+        <p class="body-copy">Circuits light up. GPUs become the new foundries. ZynthAI explains the fit — model weights, KV cache, runtime overhead, usable VRAM, confidence — and names the smallest GPU class that actually works.</p>
+        <div class="trust-grid">
+          <div class="stat"><strong data-count="16">0</strong><b>GB usable T4</b><span>Recommended for small production contexts.</span></div>
+          <div class="stat"><strong data-count="128">0</strong><b>K context aware</b><span>Stops invalid requests before endpoint creation.</span></div>
+          <div class="stat"><strong data-count="8">0</strong><b>Concurrent sessions</b><span>KV cache estimates react to demand.</span></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="chapter" id="cloud" data-chapter="4">
+      <div class="copy">
+        <div class="kicker">[ 04 / CLOUD-NATIVE — DEPLOY ]</div>
+        <h2 data-scramble>One path to the production API.</h2>
+        <p class="body-copy">Containers, Kubernetes, and a unified gateway. Endpoint creation exposes the model through APISIX Gateway and a consistent `/v1` route, while Kubernetes internals stay out of the main flow.</p>
+        <div class="diagram">
+          <div class="node"><b>Model Registry</b><span>Provider, architecture, format, dtype, context, confidence.</span></div>
+          <div class="node"><b>Engine Runtime</b><span>vLLM, TGI, llama.cpp, or NVIDIA NIM selected by compatibility.</span></div>
+          <div class="node"><b>KServe Layer</b><span>Kubernetes-native deployment, scaling, readiness, and runtime control.</span></div>
+          <div class="node"><b>APISIX Gateway</b><span>Secure public path preview and consistent OpenAI-compatible API.</span></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="chapter" id="operate" data-chapter="5">
+      <div class="copy">
+        <div class="kicker">[ 05 / MODERN AI — FACTORY ]</div>
+        <h2 data-scramble>AI factories. Humans at the controls.</h2>
+        <p class="lede">Not a black box — a production floor. Engineers govern GPU clusters, model fleets, and live endpoints from a single control plane.</p>
+        <div class="trust-grid" id="trust">
+          <div class="stat"><strong data-count="99">0</strong><b>% uptime posture</b><span>Health and traffic visibility by endpoint.</span></div>
+          <div class="stat"><strong data-count="42">0</strong><b>Endpoints governed</b><span>API key protection and gateway control.</span></div>
+          <div class="stat"><strong data-count="12">0</strong><b>GPU classes tracked</b><span>Cluster-aware recommendation logic.</span></div>
+        </div>
+        <div class="cta-row">
+          <a class="button primary magnetic" href="#future" data-cursor="JUMP">Continue forward</a>
+          <button class="button magnetic" type="button" data-demo data-cursor="DEMO">Request Demo</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="chapter" id="future" data-chapter="6">
+      <div class="copy">
+        <div class="kicker">[ 06 / FUTURE HORIZON ]</div>
+        <h2 data-scramble>Humans directing AI fleets.</h2>
+        <p class="lede">From raw stone to intelligent factories. The platform engineer becomes the conductor — governing fleets, not plumbing.</p>
+        <p class="body-copy">The next chapter: predictable cost, auditable output, multi-region deployment, model versioning as infrastructure. ZynthAI is the operating layer that gets you there.</p>
+        <div class="cta-row">
+          <a class="button primary magnetic" href="#reveal" data-cursor="REVEAL">See the product</a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <section class="reveal" id="reveal">
+    <div class="reveal-stage">
+      <div class="copy visible" style="opacity:1; transform:none;">
+        <div class="reveal-mono">[ ZYNTHAI / PRODUCT REVEAL ]</div>
+        <h2 data-scramble>The default operating layer for production AI.</h2>
+        <p class="lede">ZynthAI is the platform engineers’ control layer for deploying, governing, and observing AI workloads — without needing deep data science expertise.</p>
+        <ul class="reveal-stack" aria-label="ZynthAI capabilities">
+          <li data-n="01 /">Model registry with provider, architecture, and metadata confidence</li>
+          <li data-n="02 /">Engine catalog across vLLM, TGI, llama.cpp, and NVIDIA NIM</li>
+          <li data-n="03 /">Endpoint wizard with GPU-aware hardware guidance</li>
+          <li data-n="04 /">APISIX gateway exposure and unified /v1 API</li>
+          <li data-n="05 /">Logs, telemetry, GPU health, and key-gated access</li>
+        </ul>
+        <div class="cta-row">
+          <a class="button primary magnetic" href="#reveal" data-cursor="EXPLORE">Explore Platform</a>
+          <button class="button magnetic" type="button" data-demo data-cursor="DEMO">Request Demo</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <div>ZYNTHAI / DEFAULT OPERATING LAYER FOR LLM INFRASTRUCTURE</div>
+    <nav aria-label="Footer links">
+      <a href="#reveal">Product</a>
+      <a href="#cloud">Architecture</a>
+      <a href="#operate">Telemetry</a>
+      <a href="#future">Future</a>
+      <a href="#reveal">Request demo</a>
+    </nav>
+  </footer>
+
+  <script>
+    (() => {
+      const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      if (reduced) document.body.classList.add('reduced-motion');
+
+      // ============================================================
+      // 7 ERAS x 2 PLANES — Unsplash cinematic photo IDs
+      // Each era is (sky/atmosphere, mid/structures)
+      // Curated for clear visual progression:
+      // sandstone cave → metal forge → factory floor → GPU hall → datacenter → AI factory with humans → AI future
+      // ============================================================
+      const UNSPLASH = (id, w = 2400) =>
+        `https://images.unsplash.com/photo-${id}?w=${w}&q=85&auto=format&fit=crop&fm=webp`;
+
+      const ERAS = [
+        // 0 — STONE AGE: sandstone cave interior at dawn, raw rock, ember glow
+        { sky: UNSPLASH('1470071459604-3b5ec3a7fe05'), mid: UNSPLASH('1500382017468-9049fed747ef') },
+        // 1 — BRONZE / TOOLS: blacksmith forge, molten metal, hammer on anvil, sparks
+        { sky: UNSPLASH('1508471518644-ae5d3984e1c3'), mid: UNSPLASH('1473773508845-188df298d2d1') },
+        // 2 — INDUSTRIAL: factory floor, heavy machinery, assembly line, steam
+        { sky: UNSPLASH('1558618047-3c8c76c5e60e'), mid: UNSPLASH('1565008576549-57569a49371d') },
+        // 3 — ELECTRIC / COMPUTE: GPU server hall, glowing circuit traces, neon light
+        { sky: UNSPLASH('1518770660439-4636190af475'), mid: UNSPLASH('1633276229218-2c3c4b5e4c3a') },
+        // 4 — CLOUD-NATIVE: modern datacenter, server racks, cable runs, cold aisle
+        { sky: UNSPLASH('1558494949-ef010cbdcc31'), mid: UNSPLASH('1544197150-b99a580bb7a8') },
+        // 5 — MODERN AI: AI factory floor, engineers at GPU clusters, control screens, humans + AI
+        { sky: UNSPLASH('1620712943543-bcc4688e7485'), mid: UNSPLASH('1633412802994-5c058f151b66') },
+        // 6 — FUTURE HORIZON: human + AI collaboration, augmented workspace, glowing horizon
+        { sky: UNSPLASH('1451187580459-43490279c0fa'), mid: UNSPLASH('1678338947912-736e6b1c5b5f') }
+      ];
+
+      // Preload all images and signal when stage is ready
+      const veil = document.getElementById('veil');
+      const veilStatus = document.getElementById('veilStatus');
+      const total = ERAS.length * 2;
+      let loaded = 0;
+      const preload = (url) => new Promise((resolve) => {
+        const img = new Image();
+        img.onload = () => { loaded++; veilStatus.textContent = `LOADING ${loaded}/${total}`; resolve(); };
+        img.onerror = () => { loaded++; veilStatus.textContent = `LOADING ${loaded}/${total}`; resolve(); };
+        img.src = url;
+      });
+
+      // Apply backgrounds
+      const eraEls = [...document.querySelectorAll('.era')];
+      ERAS.forEach((era, i) => {
+        const sky = eraEls[i].querySelector('[data-sky]');
+        const mid = eraEls[i].querySelector('[data-mid]');
+        sky.style.backgroundImage = `url('${era.sky}')`;
+        mid.style.backgroundImage = `url('${era.mid}')`;
+      });
+
+      // ============================================================
+      // SCROLL TIMELINE
+      // progress 0..1 across the whole page
+      // 7 era windows, cross-dissolve as you advance
+      // ============================================================
+      const state = {
+        progress: 0,
+        targetProgress: 0,
+        chapter: 0,
+        pointerX: 0.5,
+        pointerY: 0.5,
+        time: 0,
+        paused: false
+      };
+
+      const eraCount = ERAS.length;
+      const eraWindow = 1 / eraCount; // each era occupies 1/7 of progress
+      const smoother = (x) => {
+        const t = Math.min(1, Math.max(0, x));
+        return t * t * t * (t * (t * 6 - 15) + 10);
+      };
+
+      // Returns opacity 0..1 for era i given current progress — long, buttery cross-dissolves
+      const eraOpacity = (i, p) => {
+        const center = i * eraWindow + eraWindow * 0.5;
+        const width = eraWindow * 1.68; // long overlap so eras melt instead of snapping
+        const start = center - width;
+        const end = center + width;
+        if (p <= start || p >= end) return 0;
+        const t = (p - start) / (end - start);
+        if (t < 0.5) {
+          return smoother(t * 2);
+        }
+        return smoother(1 - (t - 0.5) * 2);
+      };
+
+      // Per-era dolly transform — forward travel through layered scenery
+      const eraTransform = (i, p) => {
+        const local = (p - (i * eraWindow)) / eraWindow; // 0..1 inside era
+        const clamped = Math.min(1.25, Math.max(-0.25, local));
+        const smoothLocal = smoother(clamped);
+
+        // The background slowly approaches the viewer while the outgoing era drifts past.
+        const dolly = 1.035 + smoothLocal * 0.155 + Math.sin((i + p * eraCount) * Math.PI) * 0.01;
+
+        // Diagonal camera drift makes the journey feel continuous, not like poster swaps.
+        const panX = (smoothLocal - 0.5) * 2.8 + (state.pointerX - 0.5) * 1.2;
+        const panY = (smoothLocal - 0.5) * 1.55 + (state.pointerY - 0.5) * 0.8;
+
+        return { dolly, panX, panY };
+      };
+
+      function updateScroll() {
+        const max = Math.max(1, document.documentElement.scrollHeight - window.innerHeight);
+        state.targetProgress = Math.min(1, Math.max(0, window.scrollY / max));
+
+        // Determine which era is "active" for the progress rail + copy visibility
+        const p = state.targetProgress;
+        const active = Math.min(eraCount - 1, Math.floor(p * eraCount));
+        state.chapter = active;
+        document.querySelectorAll('.tick').forEach((tick, i) =>
+          tick.classList.toggle('active', i === active)
+        );
+      }
+
+      // ============================================================
+      // PARTICLE CANVAS — foreground atmosphere
+      // Behavior shifts with era: embers -> sparks -> data rain
+      // ============================================================
+      const canvas = document.getElementById('particles');
+      const ctx = canvas.getContext('2d', { alpha: true });
+      const dpr = Math.min(1.75, window.devicePixelRatio || 1);
+      let W = 0, H = 0;
+      const particles = [];
+      const maxParticles = 110;
+
+      function resizeCanvas() {
+        W = window.innerWidth;
+        H = window.innerHeight;
+        canvas.width = Math.floor(W * dpr);
+        canvas.height = Math.floor(H * dpr);
+        canvas.style.width = `${W}px`;
+        canvas.style.height = `${H}px`;
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      }
+
+      // Particle kind per era
+      const eraKind = (i) => {
+        if (i <= 1) return 'ember';
+        if (i === 2) return 'spark';
+        if (i === 3) return 'circuit';
+        if (i === 4) return 'data';
+        if (i === 5) return 'pulse';
+        return 'stardust';
+      };
+
+      // Color palette per era
+      const eraColor = (i) => {
+        if (i <= 1) return ['#ff8a3c', '#ffb163', '#ffd9a0'];
+        if (i === 2) return ['#ffb14a', '#ffd166', '#ffffff'];
+        if (i === 3) return ['#22d3ee', '#06b6d4', '#a5f3fc'];
+        if (i === 4) return ['#22d3ee', '#7dd3fc', '#ffffff'];
+        if (i === 5) return ['#22d3ee', '#a5f3fc', '#e0f7ff'];
+        return ['#a78bfa', '#22d3ee', '#f0abfc'];
+      };
+
+      function spawnParticle(kind, colors) {
+        const p = {
+          x: 0, y: 0, vx: 0, vy: 0, life: 0, max: 0, r: 0,
+          color: colors[(Math.random() * colors.length) | 0]
+        };
+        if (kind === 'ember' || kind === 'spark') {
+          p.x = Math.random() * W;
+          p.y = H + 10;
+          p.vx = (Math.random() - 0.5) * 0.4;
+          p.vy = -(0.4 + Math.random() * 0.9);
+          p.max = 220 + Math.random() * 220;
+          p.r = 0.6 + Math.random() * 1.4;
+        } else if (kind === 'circuit') {
+          p.x = Math.random() * W;
+          p.y = Math.random() * H;
+          p.vx = 0;
+          p.vy = (Math.random() < 0.5 ? -1 : 1) * (0.3 + Math.random() * 0.5);
+          p.max = 260 + Math.random() * 200;
+          p.r = 0.4 + Math.random() * 1.1;
+        } else if (kind === 'data') {
+          p.x = Math.random() * W;
+          p.y = -10;
+          p.vx = 0;
+          p.vy = 1.2 + Math.random() * 1.6;
+          p.max = 200 + Math.random() * 220;
+          p.r = 0.6 + Math.random() * 1.4;
+        } else if (kind === 'pulse') {
+          const angle = Math.random() * Math.PI * 2;
+          const r0 = 40 + Math.random() * 80;
+          p.x = W / 2 + Math.cos(angle) * r0;
+          p.y = H / 2 + Math.sin(angle) * r0;
+          p.vx = Math.cos(angle) * (0.4 + Math.random() * 0.6);
+          p.vy = Math.sin(angle) * (0.4 + Math.random() * 0.6);
+          p.max = 280 + Math.random() * 200;
+          p.r = 0.5 + Math.random() * 1.2;
+        } else { // stardust
+          p.x = Math.random() * W;
+          p.y = Math.random() * H;
+          p.vx = (Math.random() - 0.5) * 0.15;
+          p.vy = (Math.random() - 0.5) * 0.15;
+          p.max = 400 + Math.random() * 200;
+          p.r = 0.4 + Math.random() * 1.0;
+        }
+        p.life = p.max;
+        return p;
+      }
+
+      function ensureParticles(kind, colors) {
+        while (particles.length < maxParticles) {
+          particles.push(spawnParticle(kind, colors));
+        }
+      }
+
+      function stepParticles(dt, kind, colors) {
+        ctx.clearRect(0, 0, W, H);
+        ctx.globalCompositeOperation = 'lighter';
+        for (let i = particles.length - 1; i >= 0; i--) {
+          const p = particles[i];
+          p.x += p.vx * dt;
+          p.y += p.vy * dt;
+          p.life -= dt;
+          if (p.life <= 0 || p.x < -20 || p.x > W + 20 || p.y < -20 || p.y > H + 20) {
+            particles[i] = spawnParticle(kind, colors);
+            continue;
+          }
+          const a = Math.max(0, Math.min(1, p.life / p.max));
+          ctx.fillStyle = p.color;
+          ctx.globalAlpha = a * (kind === 'pulse' ? 0.7 : 0.55);
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, p.r * a, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.globalAlpha = 1;
+        ctx.globalCompositeOperation = 'source-over';
+      }
+
+      // ============================================================
+      // COPY VISIBILITY + SCRAMBLE + COUNTERS
+      // ============================================================
+      const copies = [...document.querySelectorAll('.chapter .copy, .reveal .copy')];
+      const observer = new IntersectionObserver(entries => {
+        entries.forEach(entry => {
+          if (!entry.isIntersecting) return;
+          // Smooth reveal based on intersection ratio
+          const ratio = entry.intersectionRatio;
+          if (ratio > 0.15) {
+            entry.target.classList.add('visible');
+            entry.target.querySelectorAll('[data-scramble]').forEach(scramble);
+            tickCounters(entry.target);
+          }
+        });
+      }, { threshold: [0.1, 0.15, 0.25, 0.4, 0.6] });
+      copies.forEach(c => observer.observe(c));
+
+      const glyphs = '@%£+}!#<>[]{}01*';
+      function scramble(el) {
+        const text = el.dataset.text || el.textContent.trim();
+        el.dataset.text = text;
+        if (el.dataset.done === 'true' || reduced) return;
+        el.dataset.done = 'true';
+        let frame = 0;
+        const total = 42; // more frames = smoother
+        const run = () => {
+          const progress = frame / total;
+          // Eased progress for buttery feel
+          const eased = progress < 0.5 ? 2 * progress * progress : 1 - Math.pow(-2 * progress + 2, 2) / 2;
+          el.textContent = text.split('').map((char, i) => {
+            if (char === ' ') return ' ';
+            const threshold = i / text.length;
+            return eased > threshold ? char : glyphs[(Math.random() * glyphs.length) | 0];
+          }).join('');
+          frame += 1;
+          if (frame <= total) requestAnimationFrame(run);
+          else el.textContent = text;
+        };
+        run();
+      }
+
+      function tickCounters(container) {
+        container.querySelectorAll('[data-count]').forEach(el => {
+          if (el.dataset.counted === 'true') return;
+          el.dataset.counted = 'true';
+          const target = Number(el.dataset.count);
+          const start = performance.now();
+          const duration = 1200; // longer = smoother
+          const step = now => {
+            const t = Math.min(1, (now - start) / duration);
+            // Smooth cubic ease-out
+            const eased = 1 - Math.pow(1 - t, 4);
+            el.textContent = String(Math.round(target * eased));
+            if (t < 1 && !reduced) requestAnimationFrame(step);
+          };
+          requestAnimationFrame(step);
+        });
+      }
+
+      // ============================================================
+      // CURSOR + MAGNETIC — spring-based for butter feel
+      // ============================================================
+      const cursor = document.getElementById('cursor');
+      let cursorX = 0, cursorY = 0;
+      let cursorTargetX = 0, cursorTargetY = 0;
+
+      document.addEventListener('mousemove', (e) => {
+        cursorTargetX = e.clientX;
+        cursorTargetY = e.clientY;
+        state.pointerX = e.clientX / window.innerWidth;
+        state.pointerY = e.clientY / window.innerHeight;
+      });
+
+      // Smooth cursor in render loop
+      function updateCursor() {
+        cursorX += (cursorTargetX - cursorX) * 0.18;
+        cursorY += (cursorTargetY - cursorY) * 0.18;
+        cursor.style.left = `${cursorX}px`;
+        cursor.style.top = `${cursorY}px`;
+        if (!reduced) requestAnimationFrame(updateCursor);
+      }
+      updateCursor();
+
+      document.querySelectorAll('a, button, .magnetic, [data-cursor]').forEach(el => {
+        el.addEventListener('mouseenter', () => {
+          cursor.classList.add('hot');
+          cursor.dataset.label = el.dataset.cursor || 'GO';
+        });
+        el.addEventListener('mouseleave', () => {
+          cursor.classList.remove('hot');
+          cursor.dataset.label = '';
+        });
+      });
+
+      // Magnetic buttons with spring
+      const magneticElements = new Map();
+      document.querySelectorAll('.magnetic').forEach(el => {
+        magneticElements.set(el, { x: 0, y: 0, tx: 0, ty: 0 });
+        el.addEventListener('mousemove', (e) => {
+          if (reduced) return;
+          const rect = el.getBoundingClientRect();
+          const data = magneticElements.get(el);
+          data.tx = (e.clientX - rect.left - rect.width / 2) * 0.15;
+          data.ty = (e.clientY - rect.top - rect.height / 2) * 0.2;
+        });
+        el.addEventListener('mouseleave', () => {
+          const data = magneticElements.get(el);
+          data.tx = 0;
+          data.ty = 0;
+        });
+      });
+
+      function updateMagnetics() {
+        magneticElements.forEach((data, el) => {
+          data.x += (data.tx - data.x) * 0.12;
+          data.y += (data.ty - data.y) * 0.12;
+          el.style.transform = `translate3d(${data.x}px, ${data.y - 2}px, 0)`;
+        });
+        if (!reduced) requestAnimationFrame(updateMagnetics);
+      }
+      updateMagnetics();
+
+      // ============================================================
+      // MENU
+      // ============================================================
+      const overlay = document.getElementById('menuOverlay');
+      const menuButton = document.getElementById('menuButton');
+      const openMenu = () => {
+        overlay.classList.add('open');
+        overlay.setAttribute('aria-hidden', 'false');
+        menuButton.setAttribute('aria-expanded', 'true');
+      };
+      const closeMenu = () => {
+        overlay.classList.remove('open');
+        overlay.setAttribute('aria-hidden', 'true');
+        menuButton.setAttribute('aria-expanded', 'false');
+      };
+      menuButton.addEventListener('click', openMenu);
+      document.getElementById('closeMenu').addEventListener('click', closeMenu);
+      overlay.querySelectorAll('a').forEach(a => a.addEventListener('click', closeMenu));
+      document.addEventListener('keydown', e => { if (e.key === 'Escape') closeMenu(); });
+
+      // ============================================================
+      // DEMO BUTTON
+      // ============================================================
+      document.querySelectorAll('[data-demo]').forEach(button => {
+        button.addEventListener('click', () => {
+          const original = button.textContent;
+          button.textContent = 'Demo request queued';
+          setTimeout(() => { button.textContent = original; }, 1900);
+        });
+      });
+
+      // ============================================================
+      // MAIN LOOP
+      // ============================================================
+      let lastTime = performance.now();
+      function tick(now) {
+        if (state.paused) { lastTime = now; return; }
+        const dt = Math.min(48, now - lastTime);
+        lastTime = now;
+        state.time = now * 0.001;
+
+        // Butter-smooth progress: responsive enough to feel controlled, damped enough to feel cinematic.
+        state.progress += (state.targetProgress - state.progress) * 0.064;
+
+        // Apply era opacities + dolly transforms
+        const p = state.progress;
+        for (let i = 0; i < eraCount; i++) {
+          const era = eraEls[i];
+          const opacity = eraOpacity(i, p);
+          era.style.opacity = String(opacity);
+          era.style.setProperty('--era-atmosphere', String(0.26 + opacity * 0.42));
+          if (opacity > 0.001) {
+            const t = eraTransform(i, p);
+            const sky = era.querySelector('[data-sky]');
+            const mid = era.querySelector('[data-mid]');
+            const targetSky = `scale(${t.dolly}) translate3d(${t.panX * 0.5}%, ${t.panY * 0.5}%, 0)`;
+            const targetMid = `scale(${t.dolly * 1.04}) translate3d(${t.panX * 1.6}%, ${t.panY * 1.4}%, 0)`;
+            sky.style.transform = targetSky;
+            mid.style.transform = targetMid;
+          }
+        }
+
+        // Particles — smooth blend across adjacent era windows
+        const active = state.chapter;
+        const localProgress = (p - active * eraWindow) / eraWindow;
+        const nextEra = Math.min(eraCount - 1, active + 1);
+        const prevEra = Math.max(0, active - 1);
+
+        const kindA = eraKind(active);
+        const colorsA = eraColor(active);
+        ensureParticles(kindA, colorsA);
+
+        // Blend with next era in last 50%
+        if (localProgress > 0.5) {
+          const kindB = eraKind(nextEra);
+          const colorsB = eraColor(nextEra);
+          ensureParticles(kindB, colorsB);
+        }
+        // Blend with previous era in first 50%
+        if (localProgress < 0.5) {
+          const kindB = eraKind(prevEra);
+          const colorsB = eraColor(prevEra);
+          ensureParticles(kindB, colorsB);
+        }
+
+        if (!reduced) stepParticles(dt * 0.05, kindA, colorsA);
+
+        if (!state.paused) requestAnimationFrame(tick);
+      }
+
+      // ============================================================
+      // BOOT
+      // ============================================================
+      const allLoads = [];
+      ERAS.forEach(e => { allLoads.push(preload(e.sky), preload(e.mid)); });
+
+      Promise.all(allLoads).then(() => {
+        veil.classList.add('hidden');
+        setTimeout(() => { veil.remove(); }, 700);
+        // Reveal the first copy and scramble the first headline
+        copies[0]?.classList.add('visible');
+        document.querySelectorAll('#origin [data-scramble]').forEach(scramble);
+      });
+
+      window.addEventListener('resize', () => { resizeCanvas(); });
+      window.addEventListener('scroll', updateScroll, { passive: true });
+      document.addEventListener('visibilitychange', () => {
+        state.paused = document.hidden;
+        if (!state.paused) { lastTime = performance.now(); requestAnimationFrame(tick); }
+      });
+
+      resizeCanvas();
+      updateScroll();
+      if (!reduced) requestAnimationFrame(tick);
+    })();
+  </script>
+</body>
+</html>
